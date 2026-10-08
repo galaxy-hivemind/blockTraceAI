@@ -1,0 +1,38 @@
+{
+  "name": "blocktrace",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "blockchain"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:backend": "npm run dev -w backend",
+    "build:frontend": "npm run build -w frontend",
+    "build:backend": "npm run build -w backend",
+    "blockchain:compile": "npm run compile -w blockchain",
+    "blockchain:node": "npm run node -w blockchain",
+    "blockchain:test": "npm run test -w blockchain",
+    "blockchain:deploy": "npm run deploy -w blockchain",
+    "db:up": "docker compose up -d || docker-compose up -d",
+    "db:down": "docker compose down || docker-compose down",
+    "prisma:validate": "prisma validate",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "prisma db seed",
+    "prisma:ping": "prisma db execute --schema prisma/schema.prisma --stdin",
+    "test:backend": "npm run test -w backend"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "prisma": "^6.15.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.15.0"
+  }
+}

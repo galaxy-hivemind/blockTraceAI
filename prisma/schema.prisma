@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ORG_ADMIN
+  INVESTIGATOR
+  AUDITOR
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  email         String     @unique
+  passwordHash  String
+  fullName      String
+  role          Role
+  walletAddress String?
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  sessions             Session[]
+  incidents            Incident[]
+  collectedEvidence        Evidence[]              @relation("EvidenceCollector")
+  custodiedEvidence        Evidence[]              @relation("EvidenceCustodian")
+  blockchainTransactions   BlockchainTransaction[]
+  verifications            Verification[]
+
+  @@index([role])
+  @@index([status])
+}
+
+model Session {
+  id         String   @id
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  CONTAINED
+  RESOLVED
+  CLOSED
+}
+
+model Incident {
+  id           String           @id @default(uuid()) @db.Uuid
+  incidentCode String           @unique
+  name         String
+  description  String
+  severity     IncidentSeverity
+  status       IncidentStatus   @default(OPEN)
+  createdById  String           @db.Uuid
+  createdBy    User             @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  evidence     Evidence[]
+
+  @@index([createdById])
+  @@index([status])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+enum StorageStatus {
+  AVAILABLE
+  MISSING
+}
+
+enum IntegrityStatus {
+  UNVERIFIED
+  VERIFIED
+  COMPROMISED
+}
+
+enum BlockchainRegistrationStatus {
+  NOT_REGISTERED
+  PENDING
+  REGISTERED
+  FAILED
+}
+
+enum BlockchainTransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+model Evidence {
+  id                             String                        @id @default(uuid()) @db.Uuid
+  evidenceCode                   String                        @unique
+  incidentId                     String                        @db.Uuid
+  incident                       Incident                      @relation(fields: [incidentId], references: [id], onDelete: Restrict)
+  originalFilename               String
+  storedFilename                 String                        @unique
+  mimeType                       String
+  fileSizeBytes                  Int
+  sha256HashCached               String
+  hashAlgorithm                  String
+  description                    String?
+  collectorId                    String                        @db.Uuid
+  collector                      User                          @relation("EvidenceCollector", fields: [collectorId], references: [id], onDelete: Restrict)
+  currentCustodianId             String?                       @db.Uuid
+  currentCustodian               User?                         @relation("EvidenceCustodian", fields: [currentCustodianId], references: [id], onDelete: Restrict)
+  storageLocation                String
+  storageStatus                  StorageStatus                 @default(AVAILABLE)
+  integrityStatus                IntegrityStatus               @default(UNVERIFIED)
+  blockchainEvidenceId           String?
+  blockchainRegistrationTxId     String?
+  registeredOnChainAt            DateTime?
+  blockchainRegistrationStatus   BlockchainRegistrationStatus  @default(NOT_REGISTERED)
+  verifications                  Verification[]
+  createdAt                      DateTime                      @default(now())
+  updatedAt                      DateTime                      @updatedAt
+
+  @@index([incidentId])
+  @@index([collectorId])
+  @@index([currentCustodianId])
+  @@index([storageStatus])
+  @@index([integrityStatus])
+  @@index([blockchainRegistrationStatus])
+  @@index([createdAt])
+}
+
+model BlockchainTransaction {
+  id              String                       @id @default(uuid()) @db.Uuid
+  txHash          String?
+  contractAddress String
+  chainId         Int
+  functionName    String
+  status          BlockchainTransactionStatus
+  blockNumber     BigInt?
+  submittedById   String                       @db.Uuid
+  submittedBy     User                         @relation(fields: [submittedById], references: [id], onDelete: Restrict)
+  submittedAt     DateTime                     @default(now())
+  confirmedAt     DateTime?
+  errorMessage    String?
+
+  @@index([submittedById])
+  @@index([txHash])
+  @@index([status])
+  @@index([submittedAt])
+}
+
+enum VerificationResult {
+  MATCH
+  MISMATCH
+}
+
+model Verification {
+  id                       String              @id @default(uuid()) @db.Uuid
+  evidenceId               String              @db.Uuid
+  evidence                 Evidence            @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+  verifiedById             String              @db.Uuid
+  verifiedBy               User                @relation(fields: [verifiedById], references: [id], onDelete: Restrict)
+  expectedBlockchainHash   String
+  actualHash               String
+  result                   VerificationResult
+  verifiedAt               DateTime            @default(now())
+  blockchainTxId           String?
+  notes                    String?
+
+  @@index([evidenceId])
+  @@index([verifiedById])
+  @@index([verifiedAt])
+  @@index([result])
+}

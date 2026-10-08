@@ -1,0 +1,6 @@
+*
+!.gitignore
+!.gitkeep
+!evidence/
+evidence/*
+!evidence/.gitkeep
